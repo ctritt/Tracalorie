@@ -12,9 +12,9 @@ const ItemCtrl = (function(){
   // Data Structure / State
   const data = {
     items: [
-      {id: 0, name: 'Steak Dinner', calories: 1200},
-      {id: 1, name: 'Cookie', calories: 400},
-      {id: 2, name: 'Eggs', calories: 300}
+      // {id: 0, name: 'Steak Dinner', calories: 1200},
+      // {id: 1, name: 'Cookie', calories: 400},
+      // {id: 2, name: 'Eggs', calories: 300}
     ],
     currentItem: null,
     totalCalories: 0
@@ -69,6 +69,18 @@ const ItemCtrl = (function(){
       });
       return found;
     },
+    deleteItem: function(itemId) {
+     const ids = data.items.map(function(item){
+        return item.id;
+      });
+
+      const index = ids.indexOf(itemId);
+
+      data.items.splice(index, 1);
+    },
+    deleteAllItems: function() {
+      data.items = [];
+    },
     getCurrentItem: function() {
       return data.currentItem;
     },
@@ -101,13 +113,15 @@ const UICtrl = (function(){
   const UISelectors = {
     itemNameInput: '#item-name',
     listItems: '#item-list li',
+    itemList: '#item-list',
     itemCaloriesInput: '#item-calories',
     itemList: '#item-list',
     totalCalories: '.total-calories',
     addBtn: '.add-btn',
     updateBtn: '.update-btn',
     deleteBtn: '.delete-btn',
-    backBtn: '.back-btn'
+    backBtn: '.back-btn',
+    clearAllBtn: '.clear-btn'
   }
 
   // Public methods
@@ -191,16 +205,27 @@ const UICtrl = (function(){
     },
     updateListItem: function(item) {
   
-      const li = document.querySelectorAll(UISelectors.listItems);
-      console.log(li);
-      // const html = `
-      // <strong>${item.name}: </strong> <em>${item.calories} Calories</em>
-      // <a href="" class="secondary-content">
-      //   <i class="edit-item fa fa-pencil"></i>
-      // </a>
-      // `;
+      const li = document.querySelector(`#item-${item.id}`);
       
-      // item.innerHTML = html;
+      const html = `
+      <strong>${item.name}: </strong> <em>${item.calories} Calories</em>
+      <a href="" class="secondary-content">
+        <i class="edit-item fa fa-pencil"></i>
+      </a>
+      `;
+      
+      li.innerHTML = html;
+    },
+    deleteListItem: function(id) {
+      const itemId = `#item-${id}`;
+      const item = document.querySelector(itemId);
+      item.remove();
+    },
+    clearAllItems: function() {
+      const itemList = document.querySelector(UISelectors.itemList);
+      while(itemList.firstChild){
+        itemList.removeChild(itemList.firstChild);
+      }
     },
     getSelectors: function(){
       return UISelectors;
@@ -220,6 +245,21 @@ const App = (function(ItemCtrl, UICtrl){
     // Add item event
     document.querySelector(UISelectors.addBtn).addEventListener('click', addItemSubmit);
 
+    // Edit icon click event (uses event delegation)
+    document.querySelector(UISelectors.itemList).addEventListener('click', editItemSubmit);
+    
+    // Update item event
+    document.querySelector(UISelectors.updateBtn).addEventListener('click', updateItemSubmit);
+    
+    // Back item event
+    document.querySelector(UISelectors.backBtn).addEventListener('click', () => UICtrl.clearEditState);
+
+    // Delete item event
+    document.querySelector(UISelectors.deleteBtn).addEventListener('click', deleteItemSubmit);
+
+    // Clear all items
+    document.querySelector(UISelectors.clearAllBtn).addEventListener('click', clearAllItemsSubmit);
+
     // Disable submit on enter
     document.addEventListener('keypress', function(e) {
       if (e.keyCode === 13 || e.which === 13) {
@@ -227,11 +267,6 @@ const App = (function(ItemCtrl, UICtrl){
         return false;
       }
     });
-
-    // Edit icon click event (uses event delegation)
-    document.querySelector(UISelectors.itemList).addEventListener('click', editItemSubmit);
-    // Update item event
-    document.querySelector(UISelectors.updateBtn).addEventListener('click', updateItemSubmit);
   }
 
   // Add item submit
@@ -248,7 +283,7 @@ const App = (function(ItemCtrl, UICtrl){
       // Add item to UI list
       UICtrl.addListItem(newItem);
 
-      // Get total calories
+      //Get total calories
       const totalCalories = ItemCtrl.getTotalCalories(); 
       // Add total calories to UI
       UICtrl.showTotalCalories(totalCalories);
@@ -289,26 +324,6 @@ const App = (function(ItemCtrl, UICtrl){
     e.preventDefault();
   }
 
-  // const updateItemSubmit = function(e) {
-  //   // get the current item
-  //   let currItem = ItemCtrl.getCurrentItem();
-  //   // get input
-  //   const input = UICtrl.getItemInput();
-  //   // mutate item
-  //   currItem.name = input.name;
-  //   currItem.calories = parseInt(input.calories);
-  //   // call ItemCtrl.updateItem(item)
-  //   ItemCtrl.updateItem(currItem);
-  //   // clear current item (currentItem = null)
-  //   ItemCtrl.setCurrentItem(null);
-  //   // call UICtrl refreshItem(item)
-  //   UICtrl.updateItem(currItem);
-  //   // call UICtrl clearEditState()
-  //   UICtrl.clearEditState();
-
-  //   e.preventDefault();
-  // }
-
   const updateItemSubmit = function(e) {
     // Get item input
     const input = UICtrl.getItemInput();
@@ -318,8 +333,41 @@ const App = (function(ItemCtrl, UICtrl){
     
     // Update the UI
     UICtrl.updateListItem(updatedItem);
+
+    const totalCalories = ItemCtrl.getTotalCalories();
+    UICtrl.showTotalCalories(totalCalories);
+
+    UICtrl.clearEditState();
     
     e.preventDefault();
+  }
+
+  // Delete button event
+  function deleteItemSubmit(e) {
+    // Get current item
+    const currItem = ItemCtrl.getCurrentItem();
+    ItemCtrl.deleteItem(currItem.id);
+    
+    // Delete from UI
+    UICtrl.deleteListItem(currItem.id);
+
+    const totalCalories = ItemCtrl.getTotalCalories();
+    UICtrl.showTotalCalories(totalCalories);
+
+    UICtrl.clearEditState();
+
+    e.preventDefault();
+  }
+
+  function clearAllItemsSubmit(e) {
+    // Clear all data from ItemCtrl
+    ItemCtrl.deleteAllItems();
+    UICtrl.clearAllItems();
+
+    UICtrl.hideList();
+
+    const totalCalories = ItemCtrl.getTotalCalories();
+    UICtrl.showTotalCalories(totalCalories);
   }
 
   // Public methods
